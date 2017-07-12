@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="temp_id">
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+    <string-array name="temp_values">
+        <item>@string/temp_metric</item>
+        <item>@string/temp_imperial</item>
+    </string-array>
+
+
+</resources>
