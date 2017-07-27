@@ -15,12 +15,15 @@
  */
 package com.example.android.sunshine.app.data;
 
+import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.test.AndroidTestCase;
 import android.util.Log;
 
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class TestDb extends AndroidTestCase {
 
@@ -112,24 +115,55 @@ public class TestDb extends AndroidTestCase {
         where you can uncomment out the "createNorthPoleLocationValues" function.  You can
         also make use of the ValidateCurrentRecord function from within TestUtilities.
     */
-    public void testLocationTable() {
+    public long testLocationTable() {
         // First step: Get reference to writable database
+        SQLiteDatabase db = new WeatherDbHelper(
+                this.mContext).getWritableDatabase();
 
         // Create ContentValues of what you want to insert
+        ContentValues location = new ContentValues();
+        location.put(WeatherContract.LocationEntry.COLUMN_LOCATION_SETTING,"95050");
+        location.put(WeatherContract.LocationEntry.COLUMN_CITY_NAME,"São Francisco");
+        location.put(WeatherContract.LocationEntry.COLUMN_COORD_LAT,64);
+        location.put(WeatherContract.LocationEntry.COLUMN_COORD_LONG,-147);
         // (you can use the createNorthPoleLocationValues if you wish)
 
         // Insert ContentValues into database and get a row ID back
 
+        long row = db.insert(WeatherContract.LocationEntry.TABLE_NAME,null,location);
+        System.out.println("[rfsaidel] row: "+row);
         // Query the database and receive a Cursor back
-
+        Cursor cursor = db.query(WeatherContract.LocationEntry.TABLE_NAME,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
         // Move the cursor to a valid database row
+        if(cursor.moveToFirst()){
+            int city = cursor.getColumnIndex(WeatherContract.LocationEntry.COLUMN_CITY_NAME);
+            String city_name = cursor.getString(city);
+            System.out.println("[rfsaidel] city_name: "+city_name);
 
+            double lat = cursor.getDouble(cursor.getColumnIndex(WeatherContract.LocationEntry.COLUMN_COORD_LAT));
+            System.out.println("[rfsaidel] lat: "+lat);
+
+            double lon = cursor.getDouble(cursor.getColumnIndex(WeatherContract.LocationEntry.COLUMN_COORD_LONG));
+            System.out.println("[rfsaidel] lon: "+lon);
+
+            String setting = cursor.getString(cursor.getColumnIndex(WeatherContract.LocationEntry.COLUMN_LOCATION_SETTING));
+            System.out.println("[rfsaidel] setting: "+setting);
+        }
         // Validate data in resulting Cursor with the original ContentValues
         // (you can use the validateCurrentRecord function in TestUtilities to validate the
         // query if you like)
+        validateCurrentRecord("FAIL",cursor,location);
 
         // Finally, close the cursor and database
-
+        db.close();
+        cursor.close();
+        return row;
     }
 
     /*
@@ -141,6 +175,7 @@ public class TestDb extends AndroidTestCase {
     public void testWeatherTable() {
         // First insert the location, and then use the locationRowId to insert
         // the weather. Make sure to cover as many failure cases as you can.
+        long rowLocation = testLocationTable();
 
         // Instead of rewriting all of the code we've already written in testLocationTable
         // we can move this code to insertLocation and then call insertLocation from both
@@ -148,21 +183,43 @@ public class TestDb extends AndroidTestCase {
         // and our testLocationTable can only return void because it's a test.
 
         // First step: Get reference to writable database
+        SQLiteDatabase db = new WeatherDbHelper(
+                this.mContext).getWritableDatabase();
 
         // Create ContentValues of what you want to insert
         // (you can use the createWeatherValues TestUtilities function if you wish)
+        ContentValues contentValuesWeather = new ContentValues();
+        contentValuesWeather.put(WeatherContract.WeatherEntry.COLUMN_LOC_KEY,rowLocation);
+        contentValuesWeather.put(WeatherContract.WeatherEntry.COLUMN_DATE,"2017");
+        contentValuesWeather.put(WeatherContract.WeatherEntry.COLUMN_DEGREES,10);
+        contentValuesWeather.put(WeatherContract.WeatherEntry.COLUMN_HUMIDITY,85);
+        contentValuesWeather.put(WeatherContract.WeatherEntry.COLUMN_MAX_TEMP,25.6);
+        contentValuesWeather.put(WeatherContract.WeatherEntry.COLUMN_MIN_TEMP,12.5);
+        contentValuesWeather.put(WeatherContract.WeatherEntry.COLUMN_PRESSURE,0.98);
+        contentValuesWeather.put(WeatherContract.WeatherEntry.COLUMN_SHORT_DESC,"muito calor");
+        contentValuesWeather.put(WeatherContract.WeatherEntry.COLUMN_WEATHER_ID,1);
+        contentValuesWeather.put(WeatherContract.WeatherEntry.COLUMN_WIND_SPEED,10.5);
+
 
         // Insert ContentValues into database and get a row ID back
-
+        long rowWeather = db.insert(WeatherContract.WeatherEntry.TABLE_NAME,null,contentValuesWeather);
+        System.out.println("[rfsaidel] rowWeather:"+rowWeather);
         // Query the database and receive a Cursor back
 
+        Cursor cursor = db.query(WeatherContract.WeatherEntry.TABLE_NAME,
+                null,null,null,null,null,null,null);
         // Move the cursor to a valid database row
+        assertTrue(cursor.moveToFirst());
+        System.out.println("[rfsaidel] descWeather:"+cursor.getString(cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_SHORT_DESC)));
+
 
         // Validate data in resulting Cursor with the original ContentValues
         // (you can use the validateCurrentRecord function in TestUtilities to validate the
         // query if you like)
-
+        validateCurrentRecord("FAIL",cursor,contentValuesWeather);
         // Finally, close the cursor and database
+        db.close();
+        cursor.close();
     }
 
 
@@ -173,5 +230,19 @@ public class TestDb extends AndroidTestCase {
      */
     public long insertLocation() {
         return -1L;
+    }
+
+
+    public void validateCurrentRecord(String error, Cursor valueCursor, ContentValues expectedValues) {
+        Set<Map.Entry<String, Object>> valueSet = expectedValues.valueSet();
+        for (Map.Entry<String, Object> entry : valueSet) {
+            String columnName = entry.getKey();
+            int idx = valueCursor.getColumnIndex(columnName);
+            assertFalse("Column '" + columnName + "' not found. " + error, idx == -1);
+            String expectedValue = entry.getValue().toString();
+            assertEquals("Value '" + entry.getValue().toString() +
+                    "' did not match the expected value '" +
+                    expectedValue + "'. " + error, expectedValue, valueCursor.getString(idx));
+        }
     }
 }
